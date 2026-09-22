@@ -103,15 +103,62 @@ Hệ thống tự chuẩn hóa số/ngày và cho kiểm tra trước khi lưu.<
 const CFG={
   SPREADSHEET_ID:'1MVDAqtGMusE2nZoLcWyCmWI67vnPVUOsz59fA-KxK4E',
   SHEET:'HOSO',
-  CLIENT_ID:'313031981891-cfkqeu8scohd6s0ppnglopvv066grj2m.apps.googleusercontent.com',
-  SCOPE:'https://www.googleapis.com/auth/spreadsheets'
-};
-const H=['ID','STT','Số QĐ THA','Ngày QĐTHA','Số Bản án/QĐ','Ngày Bản án/QĐ','Người phải THA','Người được THA','Chấp hành viên','Tháng/năm kết thúc','Năm lưu trữ','Kệ','Mã ID','Ghi chú','Tạo lúc','Cập nhật'];
-const CHVS=['Phạm Quốc Đạt','Nguyễn Thị Xuân Hương','Trần Văn Hoàng','Lâm Thị Như Trúc','Nguyễn Thị Hương Giang','Nguyễn Thị Vân','Lương Kim Liên','Nguyễn Phú Đông','Nguyễn Ngọc Lữ','Nguyễn Văn Dũng'];
-let oauth=null,token=null,rows=[],sheetId=null,voiceRec=null,voiceVals=[],voiceI=0;
+ function gisReady(){
+  try{
+    if(!CFG.CLIENT_ID || CFG.CLIENT_ID.startsWith('PASTE_')){
+      toast('Chưa cấu hình OAuth Client ID.', true);
+      return;
+    }
 
-document.addEventListener('DOMContentLoaded',()=>{CHV.innerHTML='<option value="">-- Chọn chấp hành viên --</option>'+CHVS.map(x=>'<option>'+esc(x)+'</option>').join('')});
+    if(!window.google || !google.accounts || !google.accounts.oauth2){
+      return;
+    }
 
+    oauth = google.accounts.oauth2.initTokenClient({
+      client_id: CFG.CLIENT_ID,
+      scope: CFG.SCOPE,
+      callback: r => {
+        if(r.error){
+          toast('OAuth lỗi: ' + r.error, true);
+          return;
+        }
+
+        token = r.access_token;
+        sessionStorage.setItem('sheet_token', token);
+        connectUI(true);
+        initData();
+      }
+    });
+  }catch(e){
+    console.error(e);
+    toast('Không khởi tạo được Google OAuth: ' + e.message, true);
+  }
+}
+
+function connectGoogle(){
+  if(!CFG.CLIENT_ID || CFG.CLIENT_ID.startsWith('PASTE_')){
+    toast('Chưa cấu hình OAuth Client ID.', true);
+    return;
+  }
+
+  if(!window.google || !google.accounts || !google.accounts.oauth2){
+    toast('Thư viện đăng nhập Google chưa tải xong. Hãy chờ vài giây rồi thử lại.', true);
+    return;
+  }
+
+  if(!oauth){
+    gisReady();
+  }
+
+  if(!oauth){
+    toast('Không khởi tạo được kết nối Google. Hãy tải lại trang rồi thử lại.', true);
+    return;
+  }
+
+  oauth.requestAccessToken({
+    prompt: token ? '' : 'consent'
+  });
+}
 function gisReady(){
  if(CFG.CLIENT_ID.startsWith('PASTE_'))return;
  oauth=google.accounts.oauth2.initTokenClient({client_id:CFG.CLIENT_ID,scope:CFG.SCOPE,callback:r=>{
