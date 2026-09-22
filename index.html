@@ -223,20 +223,38 @@ function normDate(x){x=x.trim();if(!x)return '';let m=x.match(/^(\d{1,2})[\/\-](
 function normMY(x){x=x.trim();const m=x.match(/(\d{1,2}).*?(\d{4})/);return m?`${m[1].padStart(2,'0')}/${m[2]}`:x}
 function findCHV(x){const t=tone(x).toLowerCase().replace(/\s+/g,'');return CHVS.find(c=>tone(c).toLowerCase().replace(/\s+/g,'')===t)||''}
 
-function startVoice(){
- const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast('Trình duyệt không hỗ trợ nhận dạng giọng nói. Hãy thử Chrome.',true);return}
- voiceVals=Array(8).fill('');voiceI=0;voiceRows.innerHTML='';voiceModal.classList.add('open');voiceStep();
+let voiceStream=null;
+async function startVoice(){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){toast('Trình duyệt này không hỗ trợ nhận dạng giọng nói. Hãy dùng Google Chrome.',true);return}
+ voiceVals=Array(8).fill('');voiceI=0;voiceRows.innerHTML='';voiceModal.classList.add('open');
+ voiceStatus.innerHTML='<b>Đang kiểm tra microphone...</b>';
+ try{
+  if(!navigator.mediaDevices?.getUserMedia)throw Error('Trình duyệt không hỗ trợ getUserMedia.');
+  voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});
+  voiceStatus.innerHTML='<b>Microphone đã được cấp quyền.</b> Chuẩn bị nhận giọng nói...';
+  setTimeout(voiceStep,600);
+ }catch(e){
+  let msg=e?.message||String(e),name=e?.name||'';
+  if(name==='NotAllowedError')msg='Chrome/Windows đang chặn quyền microphone cho trang web.';
+  else if(name==='NotFoundError')msg='Không tìm thấy microphone trên thiết bị.';
+  else if(name==='NotReadableError')msg='Microphone đang bị ứng dụng khác sử dụng hoặc Windows không cho truy cập.';
+  voiceStatus.innerHTML='<b>Không mở được microphone:</b> '+esc(name+(name?' — ':'')+msg);
+ }
 }
-function closeVoice(){voiceModal.classList.remove('open');try{voiceRec?.abort()}catch(e){}}
+function stopVoiceStream(){try{voiceStream?.getTracks().forEach(t=>t.stop())}catch(e){}voiceStream=null}
+function closeVoice(){voiceModal.classList.remove('open');try{voiceRec?.abort()}catch(e){}stopVoiceStream()}
 function voiceStep(){
  const labels=['Số QĐ THA','Ngày QĐTHA','Số Bản án/QĐ + loại án','Ngày Bản án/QĐ','Người phải THA','Người được THA','Chấp hành viên','Tháng/năm kết thúc'];
- if(voiceI>=8){showVoice();return}
+ if(voiceI>=8){stopVoiceStream();showVoice();return}
  voiceStatus.innerHTML='<b>Trường '+(voiceI+1)+'/8:</b> '+labels[voiceI]+' — hãy nói...';
- const SR=window.SpeechRecognition||window.webkitSpeechRecognition;voiceRec=new SR();voiceRec.lang='vi-VN';voiceRec.continuous=false;voiceRec.interimResults=false;voiceRec.maxAlternatives=3;
- voiceRec.onresult=e=>{voiceVals[voiceI]=e.results[0][0].transcript.trim();voiceI++;setTimeout(voiceStep,700)}
- voiceRec.onerror=e=>{voiceStatus.innerHTML='<b>Lỗi microphone:</b> '+e.error+'. Hãy thử lại.'}
- try{voiceRec.start()}catch(e){voiceStatus.textContent='Không khởi động được microphone: '+e.message}
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ voiceRec=new SR();voiceRec.lang='vi-VN';voiceRec.continuous=false;voiceRec.interimResults=false;voiceRec.maxAlternatives=3;
+ voiceRec.onresult=e=>{voiceVals[voiceI]=e.results[0][0].transcript.trim();voiceI++;voiceStatus.innerHTML='<b>Đã nhận.</b> Chờ 2 giây để sang trường tiếp theo...';setTimeout(voiceStep,2000)};
+ voiceRec.onerror=e=>{let msg=e.error||'không xác định';if(msg==='not-allowed')msg+=' — quyền mic đã mở nhưng dịch vụ nhận dạng giọng nói của trình duyệt từ chối truy cập.';else if(msg==='audio-capture')msg+=' — không lấy được âm thanh từ microphone.';else if(msg==='network')msg+=' — dịch vụ nhận dạng giọng nói không kết nối được mạng.';voiceStatus.innerHTML='<b>Lỗi nhận dạng giọng nói:</b> '+esc(msg)+' <button class="bl" type="button" onclick="voiceStep()" style="margin-left:8px">Thử lại trường này</button>'};
+ try{voiceRec.start()}catch(e){voiceStatus.innerHTML='<b>Không khởi động được nhận dạng:</b> '+esc((e.name||'')+' — '+e.message)}
 }
+
 function showVoice(){
  const L=['Số QĐ THA','Ngày QĐTHA','Số Bản án/QĐ + loại án','Ngày Bản án/QĐ','Người phải THA','Người được THA','Chấp hành viên','Tháng/năm kết thúc'];
  voiceStatus.innerHTML='<b>Đã nhận đủ 8 trường.</b> Kiểm tra/chỉnh sửa rồi bấm “Dùng kết quả này”.';
