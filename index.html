@@ -109,6 +109,8 @@ const CFG={
 const H=['ID','STT','Số QĐ THA','Ngày QĐTHA','Số Bản án/QĐ','Ngày Bản án/QĐ','Người phải THA','Người được THA','Chấp hành viên','Tháng/năm kết thúc','Năm lưu trữ','Kệ','Mã ID','Ghi chú','Tạo lúc','Cập nhật'];
 const CHVS=['Phạm Quốc Đạt','Nguyễn Thị Xuân Hương','Trần Văn Hoàng','Lâm Thị Như Trúc','Nguyễn Thị Hương Giang','Nguyễn Thị Vân','Lương Kim Liên','Nguyễn Phú Đông','Nguyễn Ngọc Lữ','Nguyễn Văn Dũng'];
 let oauth=null, token=null, rows=[], sheetId=null, voiceVals=[], voiceI=0, voiceRec=null;
+let reconnectPromise=null, reconnectResolve=null;
+const REMEMBER_KEY='hoso_google_connected';
 
 function gisReady(){
   try{
@@ -117,11 +119,17 @@ function gisReady(){
       client_id:CFG.CLIENT_ID,
       scope:CFG.SCOPE,
       callback:r=>{
-        if(r.error){toast('OAuth lỗi: '+r.error,true);return;}
+        if(r.error){
+          if(reconnectResolve){reconnectResolve(false);reconnectResolve=null;reconnectPromise=null;}
+          else toast('OAuth lỗi: '+r.error,true);
+          return;
+        }
         token=r.access_token;
         sessionStorage.setItem('sheet_token',token);
+        localStorage.setItem(REMEMBER_KEY,'1');
         connectUI(true);
-        initData();
+        if(reconnectResolve){reconnectResolve(true);reconnectResolve=null;reconnectPromise=null;}
+        else initData();
       }
     });
   }catch(e){console.error(e);toast('Không khởi tạo được Google OAuth: '+e.message,true);}
@@ -132,13 +140,46 @@ function connectGoogle(){
   if(!oauth){toast('Không khởi tạo được Google OAuth.',true);return;}
   oauth.requestAccessToken({prompt:token?'':'consent'});
 }
-function disconnectGoogle(){if(token)try{google.accounts.oauth2.revoke(token,()=>{})}catch(e){}token=null;sessionStorage.removeItem('sheet_token');rows=[];sheetId=null;connectUI(false);render()}
+function disconnectGoogle(){
+ if(token)try{google.accounts.oauth2.revoke(token,()=>{})}catch(e){}
+ token=null;sessionStorage.removeItem('sheet_token');localStorage.removeItem(REMEMBER_KEY);
+ rows=[];sheetId=null;connectUI(false);render()
+}
 function connectUI(on){connect.style.display=on?'none':'';disconnect.style.display=on?'':'none';user.textContent=on?'Đã kết nối Google':'Chưa kết nối Google'}
-async function api(url,opt={}){
- if(!token)throw Error('Chưa kết nối Google.');
- const r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+CFG.SPREADSHEET_ID+url,{...opt,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',...(opt.headers||{})}});
+
+function silentReconnect(){
+ if(token)return Promise.resolve(true);
+ if(reconnectPromise)return reconnectPromise;
+ reconnectPromise=new Promise(resolve=>{reconnectResolve=resolve});
+ let tries=0;
+ const run=()=>{
+   if(window.google?.accounts?.oauth2){
+     if(!oauth)gisReady();
+     if(oauth){oauth.requestAccessToken({prompt:''});return;}
+   }
+   if(++tries<30)setTimeout(run,200);
+   else{if(reconnectResolve)reconnectResolve(false);reconnectResolve=null;reconnectPromise=null;}
+ };
+ run();
+ return reconnectPromise;
+}
+
+async function api(url,opt={},retry=true){
+ if(!token){
+   if(localStorage.getItem(REMEMBER_KEY)==='1'){
+     const ok=await silentReconnect();
+     if(!ok)throw Error('Phiên Google cần được kết nối lại.');
+   }else throw Error('Chưa kết nối Google.');
+ }
+ const doFetch=()=>fetch('https://sheets.googleapis.com/v4/spreadsheets/'+CFG.SPREADSHEET_ID+url,{...opt,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',...(opt.headers||{})}});
+ let r=await doFetch();
+ if(r.status===401 && retry && localStorage.getItem(REMEMBER_KEY)==='1'){
+   token=null;sessionStorage.removeItem('sheet_token');
+   const ok=await silentReconnect();
+   if(ok)return api(url,opt,false);
+ }
  const t=await r.text();let d={};try{d=t?JSON.parse(t):{}}catch(e){}
- if(r.status===401){token=null;connectUI(false);throw Error('Phiên Google đã hết hạn.')}
+ if(r.status===401){token=null;sessionStorage.removeItem('sheet_token');connectUI(false);throw Error('Phiên Google đã hết hạn. Hãy kết nối lại.')}
  if(!r.ok)throw Error(d.error?.message||('HTTP '+r.status));
  return d;
 }
@@ -221,7 +262,7 @@ function normQD(x){x=x.trim();if(!x)return '';if(/\/QĐ-THADS$/i.test(x))return 
 function normBA(x){x=x.trim();if(!x)return '';if(/^\d+\//.test(x))return x.replace(/\s+/g,'').toUpperCase();const m=x.match(/^(\d+)\s+(.+)$/);return m?m[1]+'/'+initials(m[2]):x}
 function normDate(x){x=x.trim();if(!x)return '';let m=x.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);if(!m)m=x.match(/(\d{1,2}).*?(\d{1,2}).*?(\d{4})/);return m?`${m[1].padStart(2,'0')}/${m[2].padStart(2,'0')}/${m[3]}`:x}
 function normMY(x){x=x.trim();const m=x.match(/(\d{1,2}).*?(\d{4})/);return m?`${m[1].padStart(2,'0')}/${m[2]}`:x}
-function findCHV(x){const t=tone(x).toLowerCase().replace(/\s+/g,'');return CHVS.find(c=>tone(c).toLowerCase().replace(/\s+/g,'')===t)||''}
+function findCHV(x){const t=tone(x).toLowerCase().replace(/\s+/g,'');return CHVS.find(c=>tone(c).toLowerCase().replace(/\s+/g,'')===t)||''}\nfunction normPartyAddress(x){\n x=String(x||'').trim().replace(/\\s+/g,' ');\n if(!x)return '';\n const units=['ấp','khóm','tổ','khu phố','thôn','xóm','bản','buôn','xã','phường','thị trấn','huyện','quận','thị xã','thành phố','tỉnh'];\n const pat=new RegExp('\\\\s+(' + units.map(u=>u.replace(/ /g,'\\\\\\\\s+')).join('|') + ')\\\\s+','gi');\n x=x.replace(pat,(m,u)=>', '+u.replace(/\\s+/g,' ')+' ');\n x=x.replace(/\\s*,\\s*/g,', ').replace(/(?:,\\s*){2,}/g,', ').replace(/^,\\s*|,\\s*$/g,'');\n return x;\n}\n
 
 let voiceStream=null;
 async function startVoice(){
@@ -258,11 +299,12 @@ function voiceStep(){
 function showVoice(){
  const L=['Số QĐ THA','Ngày QĐTHA','Số Bản án/QĐ + loại án','Ngày Bản án/QĐ','Người phải THA','Người được THA','Chấp hành viên','Tháng/năm kết thúc'];
  voiceStatus.innerHTML='<b>Đã nhận đủ 8 trường.</b> Kiểm tra/chỉnh sửa rồi bấm “Dùng kết quả này”.';
+ voiceVals[4]=normPartyAddress(voiceVals[4]);voiceVals[5]=normPartyAddress(voiceVals[5]);
  voiceRows.innerHTML=voiceVals.map((x,i)=>`<div class="vrow"><label>${L[i]}</label><input id="vr${i}" value="${attr(x)}"></div>`).join('')
 }
 function applyVoice(){
  const a=voiceVals.map((_,i)=>document.getElementById('vr'+i)?.value||'');
- setv('QD',normQD(a[0]));setv('QDDate',normDate(a[1]));setv('BA',normBA(a[2]));setv('BADate',normDate(a[3]));setv('Phai',a[4]);setv('Duoc',a[5]);setv('CHV',findCHV(a[6])||a[6]);setv('End',normMY(a[7]));closeVoice();toast('Đã đưa dữ liệu giọng nói vào biểu mẫu. Kiểm tra trước khi lưu.')
+ setv('QD',normQD(a[0]));setv('QDDate',normDate(a[1]));setv('BA',normBA(a[2]));setv('BADate',normDate(a[3]));setv('Phai',normPartyAddress(a[4]));setv('Duoc',normPartyAddress(a[5]));setv('CHV',findCHV(a[6])||a[6]);setv('End',normMY(a[7]));closeVoice();toast('Đã đưa dữ liệu giọng nói vào biểu mẫu. Kiểm tra trước khi lưu.')
 }
 
 function csvRows(){return [H,...rows.map(vals)]}
@@ -286,11 +328,17 @@ async function importFile(e){
 }
 
 
-function initApp(){
+async function initApp(){
   const chv=document.getElementById('CHV');
   chv.innerHTML='<option value="">-- Chọn chấp hành viên --</option>'+CHVS.map(x=>'<option>'+esc(x)+'</option>').join('');
   render();
   setStatus('Chưa kết nối.');
+  if(localStorage.getItem(REMEMBER_KEY)==='1'){
+    setStatus('Đang tự kết nối lại Google...');
+    const ok=await silentReconnect();
+    if(ok){connectUI(true);await initData();}
+    else{connectUI(false);setStatus('Cần kết nối lại Google.');}
+  }
 }
 document.addEventListener('DOMContentLoaded',initApp);
 
