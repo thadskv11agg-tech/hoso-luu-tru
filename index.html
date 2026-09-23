@@ -187,7 +187,10 @@ async function loadRows(){
  setStatus('Đang tải dữ liệu...');
  const d=await api('/values/'+encodeURIComponent(CFG.SHEET+'!A2:P'));
  rows=(d.values||[]).map(r=>{let o={};H.forEach((h,i)=>o[h]=r[i]??'');return o}).filter(x=>x.ID||x['Số QĐ THA']);
- rows.sort((a,b)=>(+b.STT||0)-(+a.STT||0));rows.forEach((r,i)=>r.STT=i+1);render();setStatus('Đã kết nối • '+rows.length+' hồ sơ');
+ rows.sort((a,b)=>(+a.STT||0)-(+b.STT||0));
+ rows.forEach((r,i)=>r.STT=i+1);
+ rows.sort((a,b)=>(+b.STT||0)-(+a.STT||0));
+ render();setStatus('Đã kết nối • '+rows.length+' hồ sơ');
 }
 function vals(x){return H.map(h=>x[h]??'')}
 async function saveRecord(){
@@ -312,7 +315,8 @@ function applyVoice(){
 
 function exportRows(){
  const EH=H.filter(h=>h!=='Năm lưu trữ');
- return [EH,...rows.map(r=>EH.map(h=>r[h]??''))]
+ const ordered=[...rows].sort((a,b)=>(+a.STT||0)-(+b.STT||0));
+ return [EH,...ordered.map(r=>EH.map(h=>r[h]??''))]
 }
 function csvRows(){return exportRows()}
 function csvText(data){return '\ufeff'+data.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\r\n')}
