@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="index,follow">
+<title>Chính sách quyền riêng tư | Hệ thống theo dõi hồ sơ lưu trữ</title>
+<style>
+:root{color-scheme:light;--ink:#1e293b;--muted:#566579;--red:#ae252b;--line:#dce4e9;--bg:#f5f7f8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 Arial,Helvetica,sans-serif}
+header{background:white;border-top:4px solid var(--red);border-bottom:1px solid var(--line)}.wrap{max-width:900px;margin:auto;padding:22px 22px}header h1{font-size:25px;line-height:1.35;margin:0;color:var(--red)}header p{margin:4px 0 0;color:var(--muted);font-size:14px}
+main{max-width:900px;margin:24px auto;padding:30px 34px;background:#fff;border:1px solid var(--line);border-radius:12px}h2{font-size:19px;margin:27px 0 7px;color:#243a50}h2:first-child{margin-top:0}p,li{margin:0 0 10px}ul{padding-left:23px}a{color:#155b99;overflow-wrap:anywhere}.small{color:var(--muted);font-size:14px}.note{padding:12px 15px;border-left:4px solid var(--red);background:#fff9f7}footer{text-align:center;padding:0 20px 30px;color:var(--muted);font-size:13px}@media(max-width:600px){main{margin:12px;padding:20px 17px}header h1{font-size:20px}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>CHÍNH SÁCH QUYỀN RIÊNG TƯ</h1><p>Hệ thống theo dõi hồ sơ lưu trữ – Phòng Thi hành án dân sự khu vực 11</p></div></header>
+<main>
+<p class="small">Áp dụng cho website: <a href="https://thadskv11agg-tech.github.io/hoso-luu-tru/">https://thadskv11agg-tech.github.io/hoso-luu-tru/</a></p>
+<p>Tài liệu này mô tả việc thu thập, sử dụng và xử lý thông tin trong Hệ thống theo dõi hồ sơ lưu trữ. Website có thể được mở từ một đường link công khai, nhưng điều đó không có nghĩa dữ liệu hồ sơ được công khai.</p>
+<h2>1. Thông tin được xử lý</h2>
+<ul>
+<li><strong>Thông tin tài khoản:</strong> địa chỉ email Google của người đăng nhập, dùng để nhận diện người dùng và đối chiếu quyền truy cập trong hệ thống.</li>
+<li><strong>Thông tin nghiệp vụ:</strong> các trường hồ sơ do người có quyền nhập hoặc tải lên, như số và ngày quyết định thi hành án, số và ngày bản án/quyết định, tên người phải/được thi hành án, chấp hành viên, tháng/năm kết thúc, kệ lưu trữ và ghi chú.</li>
+<li><strong>Thông tin vận hành:</strong> quyền/trạng thái tài khoản và nhật ký thao tác (ví dụ thời gian, email, hành động và mã hồ sơ), nếu chức năng nhật ký được kích hoạt và ghi nhận thành công.</li>
+</ul>
+<h2>2. Quyền truy cập Google được yêu cầu</h2>
+<p>Phiên bản hiện tại sử dụng Google Identity Services để đăng nhập và yêu cầu quyền <code>userinfo.email</code> nhằm xác định email, cùng quyền <code>spreadsheets</code> để làm việc với bảng tính Google Sheets lưu dữ liệu của hệ thống. Đây là quyền có thể cho phép ứng dụng đọc và chỉnh sửa Google Sheets mà tài khoản đã cấp phép có quyền truy cập; quyền này không chỉ giới hạn ở một bảng tính qua giao diện đồng ý của Google.</p>
+<p>Hệ thống được lập trình để gửi yêu cầu dữ liệu tới bảng tính được cấu hình phục vụ nghiệp vụ. Việc cấp quyền Google không tự động có nghĩa người dùng được quản trị phê duyệt trong phần mềm.</p>
+<h2>3. Mục đích sử dụng thông tin</h2>
+<ul>
+<li>Xác định tài khoản đăng nhập và quyền sử dụng chức năng.</li>
+<li>Thêm, tra cứu, cập nhật, sắp xếp và xuất dữ liệu hồ sơ theo nghiệp vụ.</li>
+<li>Quản lý tài khoản được cấp quyền và hỗ trợ kiểm tra lịch sử thao tác khi có nhật ký.</li>
+</ul>
+<h2>4. Lưu trữ và dịch vụ được sử dụng</h2>
+<p>Giao diện được lưu trữ trên GitHub Pages. Dữ liệu hồ sơ được đọc và ghi vào Google Sheets thông qua Google Sheets API bằng quyền của tài khoản đăng nhập. Mã truy cập Google (access token) được lưu tạm trong <code>sessionStorage</code> của trình duyệt để duy trì kết nối trong phiên; mã này không được thiết kế để lưu lâu dài trong <code>localStorage</code>.</p>
+<p>Google và GitHub có thể xử lý dữ liệu kỹ thuật liên quan đến việc cung cấp các dịch vụ của họ theo chính sách riêng. Chức năng nhận giọng nói, nếu được sử dụng, phụ thuộc vào khả năng nhận dạng tiếng nói của trình duyệt/nhà cung cấp trình duyệt; cách xử lý âm thanh có thể khác nhau theo trình duyệt.</p>
+<h2>5. Phạm vi truy cập và bảo mật</h2>
+<p>Người quản trị dự kiến phân vai trò ADMIN, EDITOR và VIEWER để giới hạn chức năng trong ứng dụng. Dữ liệu hồ sơ không được chủ đích công bố công khai trên website hoặc trong kho mã nguồn GitHub.</p>
+<p class="note"><strong>Lưu ý kỹ thuật:</strong> Ở phiên bản hiện tại, trình duyệt truy cập trực tiếp Google Sheets API. Quyền truy cập trực tiếp đã được cấp trên Google Sheets có thể vượt quá những hạn chế nút bấm trong giao diện. Do đó, quyền chia sẻ Google Sheets và quyền hạn tài khoản cần được quản lý cẩn trọng; việc phân quyền ở giao diện chưa thay thế được kiểm tra quyền ở phía máy chủ.</p>
+<h2>6. Chia sẻ và xuất dữ liệu</h2>
+<p>Dữ liệu chỉ được sử dụng cho mục đích quản lý hồ sơ của đơn vị và có thể được xuất thành tệp Excel bởi người dùng có chức năng tương ứng. Người được cấp quyền có trách nhiệm bảo vệ tệp đã xuất và không chia sẻ trái phép. Không sử dụng dữ liệu hồ sơ để phục vụ quảng cáo.</p>
+<h2>7. Quyền và yêu cầu của người dùng</h2>
+<p>Người dùng có thể đề nghị người quản trị kiểm tra quyền truy cập, sửa thông tin tài khoản, thu hồi quyền sử dụng hoặc xử lý thông tin sai lệch trong phạm vi cho phép của nghiệp vụ và pháp luật. Người dùng có thể thu hồi quyền ứng dụng đã cấp cho tài khoản Google trong phần cài đặt bảo mật của Google; điều này có thể làm gián đoạn khả năng sử dụng hệ thống.</p>
+<h2>8. Thời gian lưu giữ</h2>
+<p>Dữ liệu hồ sơ và nhật ký (nếu có) được lưu trong bảng tính quản lý của đơn vị theo nhu cầu nghiệp vụ và quy định lưu trữ áp dụng. Hệ thống hiện chưa thiết lập một thời hạn xóa tự động chung cho mọi dữ liệu.</p>
+<h2>9. Liên hệ</h2>
+<p>Để hỏi về quyền riêng tư, quyền truy cập hoặc thông tin trong hệ thống, vui lòng liên hệ người phụ trách ứng dụng qua email: <a href="mailto:duongttag@gmail.com">duongttag@gmail.com</a>.</p>
+<h2>10. Cập nhật chính sách</h2>
+<p>Chính sách có thể được điều chỉnh khi quy trình nghiệp vụ, cách lưu trữ hoặc cơ chế xác thực/phân quyền thay đổi. Phiên bản cập nhật sẽ được đăng tại chính địa chỉ trang này.</p>
+<p class="small">Ngày biên soạn: 28/10/2026.</p>
+</main>
+<footer>Hệ thống theo dõi hồ sơ lưu trữ · Tài liệu công khai về cách xử lý thông tin</footer>
+</body>
+</html>
